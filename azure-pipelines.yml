@@ -1,0 +1,37 @@
+trigger:
+  - master
+
+strategy:
+  matrix:
+    windows:
+      IMAGE_NAME: 'vs2017-win2016'
+      BINDIR: Scripts
+    linux:
+      IMAGE_NAME: 'ubuntu-16.04'
+      BINDIR: bin
+    mac:
+      IMAGE_NAME: 'macos-10.13'
+      BINDIR: bin
+
+pool:
+  vmImage: $(IMAGE_NAME)
+
+steps:
+- bash: |
+    mkdir "$HOME"/.conda
+    source $CONDA/$BINDIR/activate
+    conda config --set always_yes yes --set changeps1 no --set safety_checks disabled
+    conda create --prefix "$HOME"/conda -c defaults -c conda-forge conda-build conda-verify codecov
+  displayName: "Install build environment"
+
+- bash: |
+    export COVERAGE_DIR=":$(pwd)/htmlcov"
+    "$HOME"/conda/$BINDIR/conda build conda.recipe --python=3.7
+  displayName: "Build package"
+
+- bash: |
+    if [ $(uname) == Linux ]; then
+      source "$HOME"/conda/$BINDIR/activate
+      python scripts/run_tests.py --format-only
+    fi
+  displayName: "Test formatting"
